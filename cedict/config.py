@@ -1,8 +1,6 @@
 from aqt import mw
+from aqt.qt import QCompleter
 from aqt.utils import showInfo
-from aqt.qt import qtmajor
-
-from PyQt6.QtWidgets import QCompleter
 
 
 def find_fields(self):

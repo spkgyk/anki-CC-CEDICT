@@ -1,8 +1,8 @@
 from aqt import mw
 from aqt.qt import QAction, QKeySequence
-from .cedict.main import start_main
 
 from .forms import dict_ui
+from .cedict.main import start_main
 
 
 def open_dict():

@@ -1,16 +1,17 @@
 import re
 import sys
 
-from typing import List
 from sqlite3 import connect
+from typing import List, Optional
 from os.path import dirname, join, realpath
 
 from aqt import mw
 from aqt.qt import *
 from aqt.utils import showInfo, tooltip
 
-from .config import *
+from ..forms.dict_ui import Ui_Dialog
 from ..third_party.hanzidentifier import hanzidentifier
+from .config import find_fields, find_tags, save_config, about
 
 # Connect to dictionary database
 db_path = join(dirname(realpath(__file__)), "../CC-CEDICT_dictionary.db")
@@ -33,7 +34,7 @@ def split_string(s: str) -> List[str]:
     return [w.strip() for w in re.split(r"[\n，,#%&$/ ]", s, 0, re.M)]
 
 
-def color_tone(pinyin):
+def color_tone(pinyin: str):
     firstTone = "āēīōūǖ"
     secondTone = "áéíóúǘ"
     thirdTone = "ǎěǐǒǔǚ"
@@ -52,7 +53,7 @@ def color_tone(pinyin):
 
 
 class start_main(QDialog):
-    def __init__(self, dialog, parent=None):
+    def __init__(self, dialog: Ui_Dialog, parent: Optional[QObject] = None):
         self.parent = parent
         QDialog.__init__(self, parent, Qt.WindowType.Window)
         self.dialog = dialog
@@ -122,35 +123,35 @@ class start_main(QDialog):
 
         # Align header
         item = self.dialog.Results.horizontalHeaderItem(0)
-        item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
+        item.setTextAlignment(Qt.AlignmentFlag.AlignLeft)
         item = self.dialog.Results.horizontalHeaderItem(1)
-        item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
+        item.setTextAlignment(Qt.AlignmentFlag.AlignLeft)
         item = self.dialog.Results.horizontalHeaderItem(2)
-        item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
+        item.setTextAlignment(Qt.AlignmentFlag.AlignLeft)
         item = self.dialog.Results.horizontalHeaderItem(3)
-        item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
+        item.setTextAlignment(Qt.AlignmentFlag.AlignLeft)
 
         # Show 10 random entries
         c.execute("SELECT * FROM dictionary WHERE LENGTH(hanzi_trad) ==2  ORDER BY RANDOM() LIMIT 10")
-        for row in c.fetchall():
+        result: List[str] = c.fetchall()
+        for row in result:
             traditional = row[0]
             simplified = row[1]
             p = row[2]
             english = row[3]
             english = english
-            result = [simplified, traditional, p, english]
-            self.add_result(result)
+            self.add_result([simplified, traditional, p, english])
         self.first_result()
 
-    def add_result(self, result):
+    def add_result(self, result: List[str]):
         rowPosition = self.dialog.Results.rowCount()
         self.dialog.Results.insertRow(rowPosition)
-        self.dialog.Results.setItem(rowPosition, 0, QtWidgets.QTableWidgetItem(str(result[0])))
-        self.dialog.Results.setItem(rowPosition, 1, QtWidgets.QTableWidgetItem(str(result[1])))
-        self.dialog.Results.setItem(rowPosition, 2, QtWidgets.QTableWidgetItem(str(result[2])))
-        self.dialog.Results.setItem(rowPosition, 3, QtWidgets.QTableWidgetItem(str(result[3]).rstrip(", ")))
+        self.dialog.Results.setItem(rowPosition, 0, QTableWidgetItem(str(result[0])))
+        self.dialog.Results.setItem(rowPosition, 1, QTableWidgetItem(str(result[1])))
+        self.dialog.Results.setItem(rowPosition, 2, QTableWidgetItem(str(result[2])))
+        self.dialog.Results.setItem(rowPosition, 3, QTableWidgetItem(str(result[3]).rstrip(", ")))
 
-        font = QtGui.QFont()
+        font = QFont()
         font.setFamily("SimHei")
         font.setPointSize(10)
         self.dialog.Results.item(rowPosition, 0).setFont(font)
@@ -161,7 +162,7 @@ class start_main(QDialog):
         self.dialog.Results.item(rowPosition, 3).setFont(font)
         self.dialog.Results.resizeColumnsToContents()
 
-    def batch_mode_search(self, words):
+    def batch_mode_search(self, words: List[str]):
         self.batch_search_mode = True
         query = self.dialog.Query.text()
         if hanzidentifier.is_traditional(query):
@@ -177,9 +178,9 @@ class start_main(QDialog):
             line = "Can't find {} words: {}".format(len(self.skipped), ",".join(self.skipped))
             showInfo(line)
 
-    def exact_match(self, word, input_type):
+    def exact_match(self, word: str, input_type: str):
         c.execute("SELECT * FROM dictionary WHERE (%s) = (?)" % (input_type), (word,))
-        result = c.fetchall()
+        result: List[str] = c.fetchall()
         for row in result:
             traditional = row[0]
             simplified = row[1]
@@ -192,7 +193,7 @@ class start_main(QDialog):
 
         if input_type == "eng":
             c.execute("SELECT * FROM dictionary WHERE eng Like ?", ("%{}%".format(word),))
-            result = c.fetchall()
+            result: List[str] = c.fetchall()
             for row in result:
                 traditional = row[0]
                 simplified = row[1]
@@ -206,9 +207,10 @@ class start_main(QDialog):
                 self.skipped.append(word)
         self.first_result()
 
-    def partial_match(self, word, input_type):
+    def partial_match(self, word: str, input_type: str):
         c.execute("SELECT * FROM dictionary WHERE (%s) Like ?" % (input_type), ("%{}%".format(word),))
-        for row in c.fetchall():
+        result: List[str] = c.fetchall()
+        for row in result:
             traditional = row[0]
             simplified = row[1]
             pinyin = row[2]
@@ -268,7 +270,7 @@ class start_main(QDialog):
             english = self.dialog.Results.item(0, 3).text()
             self.show_entry(english, pinyin, trad, simp)
 
-    def show_entry(self, english, pinyin, trad, simp):
+    def show_entry(self, english: str, pinyin: str, trad: str, simp: str):
         english = english.split(", ")
         english_entry = ""
         for i in english:
@@ -280,20 +282,19 @@ class start_main(QDialog):
         self.dialog.Pinyin.setText(pinyin)
         self.dialog.English.setText(english_entry)
 
-    def add_note(self, row, input_type, tags):
+    def add_note(self, row: List[str], input_type: str, tags: str):
         config = mw.addonManager.getConfig(__name__)
-        col = mw.col
         deck_name = self.dialog.Deck.currentText()
-        did = col.decks.id_for_name(deck_name)
+        did = mw.col.decks.id_for_name(deck_name)
         note_type_name = self.dialog.Notetype.currentText()
-        nid = col.models.id_for_name(note_type_name)
-        m = col.models.byName(note_type_name)
-        col.models.setCurrent(m)
+        nid = mw.col.models.id_for_name(note_type_name)
+        m = mw.col.models.by_name(note_type_name)
+        mw.col.models.set_current(m)
         # new_note will replace newNote
         try:
-            n = col.new_note(nid)
+            n = mw.col.new_note(nid)
         except:
-            n = col.newNote(forDeck=False)
+            n = mw.col.newNote(forDeck=False)
         simplified = row[0]
         pinyin_raw = row[2]
         traditional = row[1]
@@ -317,9 +318,9 @@ class start_main(QDialog):
         n[english_field_name] = english
         n.add_tag(tags)
 
-        note_ids_simplified = col.find_notes("{}:{}".format(simplified_field_name, simplified))
-        note_ids_traditional = col.find_notes("{}:{}".format(traditional_field_name, traditional))
-        note_ids_english = col.find_notes(
+        note_ids_simplified = mw.col.find_notes("{}:{}".format(simplified_field_name, simplified))
+        note_ids_traditional = mw.col.find_notes("{}:{}".format(traditional_field_name, traditional))
+        note_ids_english = mw.col.find_notes(
             "{}:{}".format(english_field_name, english.replace("or", ""))
         )  # excluding "or" because it causes errors
         note_ids = []
@@ -335,7 +336,7 @@ class start_main(QDialog):
             showInfo(f"This note already exists:\n{simplified} \t {traditional} \t {pinyin} \t {english.replace(newline, ' ')}")
             self.duplicate.append([simplified, traditional, pinyin_raw, english])
         else:
-            col.add_note(n, did)
+            mw.col.add_note(n, did)
 
     def add_multiple_notes(self, input_type):
         tags = self.dialog.tags.text()
