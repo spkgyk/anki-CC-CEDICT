@@ -253,6 +253,10 @@ class start_main(QDialog):
             self.exact_match(query, "eng")
             return
 
+    def search_text(self, selected_text: str):
+        self.dialog.Query.setText(selected_text)
+        self.search()
+
     def tablewidgetclicked(self):
         for idx in self.dialog.Results.selectionModel().selectedIndexes():
             row = idx.row()
@@ -384,3 +388,8 @@ class start_main(QDialog):
 
         if [simp, trad, pinyin, english] not in self.duplicate:
             tooltip("Added 1 note")
+
+    def pop_out_dict(self):
+        self.show()
+        self.raise_()
+        self.activateWindow()
