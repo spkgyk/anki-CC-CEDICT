@@ -6,6 +6,7 @@ import re
 
 import sys
 import os.path
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from zhon import cedict
 
@@ -17,14 +18,13 @@ MIXED = 4
 
 _TRADITIONAL_CHARACTERS = set(list(cedict.traditional))
 _SIMPLIFIED_CHARACTERS = set(list(cedict.simplified))
-_SHARED_CHARACTERS = _TRADITIONAL_CHARACTERS.intersection(
-    _SIMPLIFIED_CHARACTERS)
+_SHARED_CHARACTERS = _TRADITIONAL_CHARACTERS.intersection(_SIMPLIFIED_CHARACTERS)
 _ALL_CHARACTERS = cedict.all
 
 
 def _get_hanzi(s):
     """Extract a string's Chinese characters."""
-    return set(re.sub('[^%s]' % _ALL_CHARACTERS, '', s))
+    return set(re.sub("[^%s]" % _ALL_CHARACTERS, "", s))
 
 
 def identify(s):
