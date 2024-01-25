@@ -437,7 +437,7 @@ class start_main(QDialog):
             defs_to_add = "<br><br>".join(defs_to_add)
 
             if text:
-                text += defs_to_add
+                text = f"{text.strip()}<br><br>{defs_to_add}"
             else:
                 text = defs_to_add
 
