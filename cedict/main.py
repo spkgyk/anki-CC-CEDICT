@@ -7,6 +7,7 @@ from os.path import dirname, join, realpath
 
 from aqt import mw
 from aqt.qt import *
+from aqt.editor import Editor
 from aqt.utils import showInfo, tooltip
 
 from ..forms.dict_ui import Ui_Dialog
@@ -88,6 +89,9 @@ class start_main(QDialog):
         for i in notetypelist:
             self.dialog.Notetype.addItem(str(i))
 
+        self.dialog.CurrentField.setEnabled(False)
+        self.dialog.AddCurrentField.setEnabled(False)
+
         # Set current text for config items
         self.dialog.Deck.setCurrentText(config["deck_config"])
         self.dialog.Notetype.setCurrentText(config["notetype_config"])
@@ -120,6 +124,10 @@ class start_main(QDialog):
         self.dialog.Query.setToolTip("Search and import multiple words by separating them with one of those characters: ，,#%&$/")
         self.dialog.SearchButton.setToolTip("Search and import multiple words by separating them with one of those characters: ，,#%&$/")
         self.dialog.Add.setToolTip("If you searched for multiple words all results will be added, otherwise the entry above will be added.")
+        self.dialog.AddCurrentField.setToolTip(
+            "Add definition to the selected field of the current card.\n (Note must be open in browser or add/edit card menu)."
+        )
+        self.dialog.CurrentField.setToolTip("Select the field to add (append) to.\n (Note must be open in browser or add/edit card menu).")
 
         # Align header
         item = self.dialog.Results.horizontalHeaderItem(0)
@@ -142,6 +150,24 @@ class start_main(QDialog):
             english = english
             self.add_result([simplified, traditional, p, english])
         self.first_result()
+
+    def init_note(self, editor: Editor):
+        note = editor.note
+        if note:
+            self.dialog.CurrentField.setEnabled(True)
+            self.dialog.AddCurrentField.setEnabled(True)
+            try:
+                self.dialog.AddCurrentField.clicked.disconnect()
+            except:
+                pass
+            self.dialog.AddCurrentField.clicked.connect(lambda: self.add_to_note(editor))
+
+            self.dialog.CurrentField.clear()
+            self.dialog.CurrentField.addItems(note.keys())
+
+            for i, k in enumerate(note.keys()):
+                if "target" in k.lower():
+                    self.dialog.CurrentField.setCurrentIndex(i)
 
     def add_result(self, result: List[str]):
         rowPosition = self.dialog.Results.rowCount()
@@ -388,6 +414,36 @@ class start_main(QDialog):
 
         if [simp, trad, pinyin, english] not in self.duplicate:
             tooltip("Added 1 note")
+
+    def add_to_note(self, editor: Editor):
+        selected_field = self.dialog.CurrentField.currentText()
+
+        if selected_field and self.dialog.Results.rowCount():
+            if not self.dialog.Results.selectionModel().selectedRows():
+                self.dialog.Results.selectRow(0)
+            note = editor.note
+            text = note[selected_field]
+            defs_to_add = []
+            for idx in self.dialog.Results.selectionModel().selectedRows():
+                row = idx.row()
+                simp = self.dialog.Results.item(row, 0).text()
+                trad = self.dialog.Results.item(row, 1).text()
+                pinyin = self.dialog.Results.item(row, 2).text()
+                english = self.dialog.Results.item(row, 3).text()
+
+                def_to_add = f"【{simp}】【{trad}】{pinyin}<br>{english.replace(', ','/')}"
+                defs_to_add.append(def_to_add)
+
+            defs_to_add = "<br><br>".join(defs_to_add)
+
+            if text:
+                text += defs_to_add
+            else:
+                text = defs_to_add
+
+            note[selected_field] = text
+
+            editor.loadNoteKeepingFocus()
 
     def pop_out_dict(self):
         self.show()
