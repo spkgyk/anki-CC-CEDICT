@@ -8,6 +8,7 @@ from os.path import dirname, join, realpath
 from aqt import mw
 from aqt.qt import *
 from aqt.editor import Editor
+from aqt.reviewer import Reviewer
 from aqt.utils import showInfo, tooltip
 
 from ..forms.dict_ui import Ui_Dialog
@@ -151,19 +152,37 @@ class start_main(QDialog):
             self.add_result([simplified, traditional, p, english])
         self.first_result()
 
-    def init_note(self, editor: Editor):
+    def received_editor(self, editor: Editor):
         note = editor.note
         if note:
             self.dialog.CurrentField.setEnabled(True)
+            self.dialog.CurrentField.clear()
+            self.dialog.CurrentField.addItems(note.keys())
+
             self.dialog.AddCurrentField.setEnabled(True)
             try:
                 self.dialog.AddCurrentField.clicked.disconnect()
             except:
                 pass
-            self.dialog.AddCurrentField.clicked.connect(lambda: self.add_to_note(editor))
+            self.dialog.AddCurrentField.clicked.connect(lambda: self.editor_add_to_note(editor))
 
+            for i, k in enumerate(note.keys()):
+                if "target" in k.lower():
+                    self.dialog.CurrentField.setCurrentIndex(i)
+
+    def received_reviewer(self, reviewer: Reviewer):
+        note = reviewer.card.note()
+        if note:
+            self.dialog.CurrentField.setEnabled(True)
             self.dialog.CurrentField.clear()
             self.dialog.CurrentField.addItems(note.keys())
+
+            self.dialog.AddCurrentField.setEnabled(True)
+            try:
+                self.dialog.AddCurrentField.clicked.disconnect()
+            except:
+                pass
+            self.dialog.AddCurrentField.clicked.connect(lambda: self.reviewer_add_to_note(reviewer))
 
             for i, k in enumerate(note.keys()):
                 if "target" in k.lower():
@@ -415,7 +434,7 @@ class start_main(QDialog):
         if [simp, trad, pinyin, english] not in self.duplicate:
             tooltip("Added 1 note")
 
-    def add_to_note(self, editor: Editor):
+    def editor_add_to_note(self, editor: Editor):
         selected_field = self.dialog.CurrentField.currentText()
 
         if selected_field and self.dialog.Results.rowCount():
@@ -444,6 +463,39 @@ class start_main(QDialog):
             note[selected_field] = text
 
             editor.loadNoteKeepingFocus()
+
+    def reviewer_add_to_note(self, reviewer: Reviewer):
+        selected_field = self.dialog.CurrentField.currentText()
+
+        if selected_field and self.dialog.Results.rowCount():
+            if not self.dialog.Results.selectionModel().selectedRows():
+                self.dialog.Results.selectRow(0)
+            note = reviewer.card.note()
+            text = note[selected_field]
+            defs_to_add = []
+            for idx in self.dialog.Results.selectionModel().selectedRows():
+                row = idx.row()
+                simp = self.dialog.Results.item(row, 0).text()
+                trad = self.dialog.Results.item(row, 1).text()
+                pinyin = self.dialog.Results.item(row, 2).text()
+                english = self.dialog.Results.item(row, 3).text()
+
+                def_to_add = f"【{simp}】【{trad}】{pinyin}<br>{english.replace(', ','/')}"
+                defs_to_add.append(def_to_add)
+
+            defs_to_add = "<br><br>".join(defs_to_add)
+
+            if text:
+                text = f"{text.strip()}<br><br>{defs_to_add}"
+            else:
+                text = defs_to_add
+
+            note[selected_field] = text
+
+            reviewer.card.col.update_note(note)
+            reviewer.card.load()
+            reviewer.refresh_if_needed()
+            reviewer._redraw_current_card()
 
     def pop_out_dict(self):
         self.show()
