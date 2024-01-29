@@ -152,6 +152,9 @@ class start_main(QDialog):
             self.add_result([simplified, traditional, p, english])
         self.first_result()
 
+        # self.ctrl_s_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
+        # self.ctrl_s_shortcut.activated.connect()
+
     def received_editor(self, editor: Editor):
         note = editor.note
         if note:
@@ -209,53 +212,20 @@ class start_main(QDialog):
 
     def batch_mode_search(self, words: List[str]):
         self.batch_search_mode = True
-        query = self.dialog.Query.text()
-        if hanzidentifier.is_traditional(query):
-            input_type = "hanzi_trad"
-        if hanzidentifier.is_simplified(query):
-            input_type = "hanzi_simp"
-        if not hanzidentifier.is_traditional(query) and not hanzidentifier.is_simplified(query):
-            input_type = "eng"
         for w in words:
-            self.exact_match(w, input_type)
+            self.match(w, self.dialog.checkBox.isChecked())
 
         if self.skipped:
-            line = "Can't find {} words: {}".format(len(self.skipped), ",".join(self.skipped))
+            line = "Can't find {} words:\n\t{}".format(len(self.skipped), ",\n".join(self.skipped))
             showInfo(line)
 
-    def exact_match(self, word: str, input_type: str):
-        c.execute("SELECT * FROM dictionary WHERE (%s) = (?)" % (input_type), (word,))
-        result: List[str] = c.fetchall()
-        for row in result:
-            traditional = row[0]
-            simplified = row[1]
-            pinyin = row[2]
-            english = row[3]
-            self.add_result([simplified, traditional, pinyin, english])
-            self.inputs.append([simplified, traditional, pinyin, english])
-        if not result and input_type != "eng":
-            self.skipped.append(word)
-
-        if input_type == "eng":
-            c.execute("SELECT * FROM dictionary WHERE eng Like ?", ("%{}%".format(word),))
-            result: List[str] = c.fetchall()
-            for row in result:
-                traditional = row[0]
-                simplified = row[1]
-                pinyin = row[2]
-                english = row[3]
-                english_list = english.split(",")
-                if word in english_list and [simplified, traditional, pinyin, english] not in self.inputs:
-                    self.add_result([simplified, traditional, pinyin, english])
-                    self.inputs.append([simplified, traditional, pinyin, english])
-            if not result:
-                self.skipped.append(word)
-        self.first_result()
-
-    def partial_match(self, word: str, input_type: str):
-        c.execute("SELECT * FROM dictionary WHERE (%s) Like ?" % (input_type), ("%{}%".format(word),))
-        result: List[str] = c.fetchall()
-        for row in result:
+    def match(self, word: str, exact: bool):
+        operator = "=" if exact else "Like"
+        word = word if exact else f"%{word}%"
+        query = f"SELECT * FROM dictionary WHERE hanzi_trad {operator} ? OR hanzi_simp {operator} ? ORDER BY LENGTH(hanzi_trad)"
+        c.execute(query, (word, word))
+        hanzi_results: List[str] = c.fetchall()
+        for row in hanzi_results:
             traditional = row[0]
             simplified = row[1]
             pinyin = row[2]
@@ -263,6 +233,21 @@ class start_main(QDialog):
             if [simplified, traditional, pinyin, english] not in self.inputs:
                 self.add_result([simplified, traditional, pinyin, english])
                 self.inputs.append([simplified, traditional, pinyin, english])
+
+        c.execute("SELECT * FROM dictionary WHERE eng Like ?", ("%{}%".format(word),))
+        eng_results: List[str] = c.fetchall()
+        for row in eng_results:
+            traditional = row[0]
+            simplified = row[1]
+            pinyin = row[2]
+            english = row[3]
+            english_list = english.split(",")
+            if word in english_list and [simplified, traditional, pinyin, english] not in self.inputs:
+                self.add_result([simplified, traditional, pinyin, english])
+                self.inputs.append([simplified, traditional, pinyin, english])
+
+        if not eng_results and not hanzi_results:
+            self.skipped.append(word)
         self.first_result()
 
     def search(self):
@@ -279,24 +264,7 @@ class start_main(QDialog):
             self.batch_mode_search(words)
             return
 
-        if hanzidentifier.is_traditional(query):
-            if self.dialog.checkBox.isChecked():
-                self.exact_match(query, "hanzi_trad")
-                return
-            else:
-                self.partial_match(query, "hanzi_trad")
-                return
-        if hanzidentifier.is_simplified(query):
-            if self.dialog.checkBox.isChecked():
-                self.exact_match(query, "hanzi_simp")
-                return
-            else:
-                self.partial_match(query, "hanzi_simp")
-                return
-        if not hanzidentifier.is_traditional(query) and not hanzidentifier.is_simplified(query):
-            self.dialog.checkBox.setChecked(True)
-            self.exact_match(query, "eng")
-            return
+        self.match(query, self.dialog.checkBox.isChecked())
 
     def search_text(self, selected_text: str):
         self.dialog.Query.setText(selected_text)
