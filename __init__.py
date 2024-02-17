@@ -31,7 +31,7 @@ def s_hotkey_press(webview: EditorWebView):
 
 
 def editor_init_ctrl_s_hotkey(webview: EditorWebView):
-    editor_shortcut_ctrl_s = QShortcut(QKeySequence("Ctrl+S"), webview)
+    editor_shortcut_ctrl_s = QShortcut(QKeySequence("Alt+S"), webview)
     editor_shortcut_ctrl_s.activated.connect(lambda webview=webview: s_hotkey_press(webview))
 
 
@@ -48,11 +48,11 @@ def card_review_init_ctrl_s_hotkey():
 action = QAction("CC-CEDICT for Anki", mw)
 action.triggered.connect(open_dict)
 mw.form.menuTools.addAction(action)
-action.setShortcut(QKeySequence("Ctrl+D"))
+action.setShortcut(QKeySequence("Alt+D"))
 
 gui_hooks.editor_did_load_note.append(init_note)
 gui_hooks.editor_web_view_did_init.append(editor_init_ctrl_s_hotkey)
 
 
-mw.ctrl_s_hotkey = QShortcut(QKeySequence("Ctrl+S"), mw)
+mw.ctrl_s_hotkey = QShortcut(QKeySequence("Alt+S"), mw)
 mw.ctrl_s_hotkey.activated.connect(card_review_init_ctrl_s_hotkey)
