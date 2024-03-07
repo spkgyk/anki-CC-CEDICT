@@ -170,7 +170,7 @@ class start_main(QDialog):
             self.dialog.AddCurrentField.clicked.connect(lambda: self.editor_add_to_note(editor))
 
             for i, k in enumerate(note.keys()):
-                if "target" in k.lower():
+                if "def" in k.lower():
                     self.dialog.CurrentField.setCurrentIndex(i)
 
     def received_reviewer(self, reviewer: Reviewer):
@@ -188,7 +188,7 @@ class start_main(QDialog):
             self.dialog.AddCurrentField.clicked.connect(lambda: self.reviewer_add_to_note(reviewer))
 
             for i, k in enumerate(note.keys()):
-                if "target" in k.lower():
+                if "def" in k.lower():
                     self.dialog.CurrentField.setCurrentIndex(i)
 
     def add_result(self, result: List[str]):
