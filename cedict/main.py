@@ -25,15 +25,18 @@ def debug(s):
     sys.stdout.write(s + "\n")
 
 
+asian_characters = r"[^\u3041}-\u3096\u30A0-\u30FF\u3400-\u4DB5\u4E00-\u9FCB\uF900-\uFA6A\u2E80-\u2FD5\uFF5F-\uFF9F\u3000-\u303F\u31F0-\u31FF\u3220-\u3243\u3280-\u337F]+"
+
+
 def split_string(s: str) -> List[str]:
     """
-    Split a string using one of the supported separator characters.
-    Each element is then stripped of leading the trailing spaces.
+    Split a string using one of the supported separator characters (newline, comma, hash, percentage, ampersand, dollar, forward slash, space).
+    Each element is then stripped of leading and trailing spaces and filtered to remove non-Chinese characters.
 
-    :param s: a string
-    :return:
+    :param s: a string to be split
+    :return: a list of strings after splitting and processing
     """
-    return [w.strip() for w in re.split(r"[\n，,#%&$/ ]", s, 0, re.M)]
+    return [clean_w for w in re.split(r"[\n，,#%&$/ ]", s, 0, re.M) if (clean_w := re.sub(asian_characters, "", w))]
 
 
 def color_tone(pinyin: str):
@@ -260,6 +263,7 @@ class start_main(QDialog):
         self.duplicate = []
         self.batch_search_mode = False
         words = split_string(query)
+        self.dialog.Query.setText(", ".join(words))
         if len(words) > 1:
             self.batch_mode_search(words)
             return
